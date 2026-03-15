@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
   const [claudeResult, gptResult, grokResult] = await Promise.allSettled([
     analyzeWithClaude(image, mediaType),
     analyzeWithOpenAICompat(openai, 'gpt-4o', image, mediaType),
-    analyzeWithOpenAICompat(xai, 'grok-2-vision-1212', image, mediaType),
+    analyzeWithOpenAICompat(xai, 'grok-4', image, mediaType),
   ]);
 
   return NextResponse.json({
