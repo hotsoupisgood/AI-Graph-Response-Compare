@@ -1,0 +1,7 @@
+anthropic
+openai
+vaderSentiment
+scipy
+numpy
+matplotlib
+nltk

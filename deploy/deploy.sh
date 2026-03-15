@@ -40,27 +40,45 @@ if [[ ! -f "$APP_DIR/.env.local" ]]; then
   exit 1
 fi
 
+# -- 0. Swap (prevents OOM kills during npm ci / next build on small servers) --
+if [[ ! -f /swapfile ]]; then
+  echo "Creating 2GB swapfile..."
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  echo "Swap enabled: $(free -h | awk '/Swap/{print $2}')"
+else
+  echo "Swap already exists — skipping."
+fi
+
 # -- 1. System packages -------------------------------------------------------
 echo ""
 echo "[1/5] Installing system packages..."
 apt-get update -qq
 apt-get install -y curl git nginx ufw certbot python3-certbot-nginx
 
-# -- 2. Node.js ---------------------------------------------------------------
+# -- 2. Node.js (via nvm — won't touch other Node versions on the server) ------
 echo ""
-echo "[2/5] Installing Node.js 20.x..."
-if ! node --version 2>/dev/null | grep -q "^v20"; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-  apt-get install -y nodejs
+echo "[2/5] Installing Node.js 20 via nvm..."
+export NVM_DIR="/root/.nvm"
+if [[ ! -d "$NVM_DIR" ]]; then
+  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 fi
-node --version
+source "$NVM_DIR/nvm.sh"
+nvm install 20
+nvm use 20
+NODE_BIN="$(which node)"
+NPM_BIN="$(which npm)"
+echo "Node: $($NODE_BIN --version)  npm: $($NPM_BIN --version)"
 
 # -- 3. Build -----------------------------------------------------------------
 echo ""
 echo "[3/5] Building app..."
 cd "$APP_DIR"
-npm ci --omit=dev
-NODE_ENV=production npm run build
+$NPM_BIN ci --omit=dev
+NODE_ENV=production $NPM_BIN run build
 
 # -- 4. Systemd service -------------------------------------------------------
 echo ""
@@ -73,7 +91,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$APP_DIR
-ExecStart=$(which node) node_modules/.bin/next start --port $APP_PORT
+ExecStart=$NODE_BIN node_modules/.bin/next start --port $APP_PORT
 Restart=always
 RestartSec=5
 EnvironmentFile=$APP_DIR/.env.local

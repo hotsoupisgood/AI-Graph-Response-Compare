@@ -37,3 +37,7 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Analysis working directory (local only)
+analysis/results/
+analysis/venv/

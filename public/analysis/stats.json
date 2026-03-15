@@ -1,0 +1,26 @@
+{
+  "image": "example.jpg",
+  "prompt": "Interpret this plot.",
+  "n_runs": 30,
+  "timestamp": "2026-03-15T00:00:00+00:00",
+  "models": {
+    "Claude": {
+      "n": 30, "mean": 0.3691, "sd": 0.4743, "median": 0.5384,
+      "ci_low": 0.1991, "ci_high": 0.5391, "min": -0.6652, "max": 0.9274
+    },
+    "ChatGPT": {
+      "n": 30, "mean": 0.9231, "sd": 0.0466, "median": 0.9327,
+      "ci_low": 0.9064, "ci_high": 0.9398, "min": 0.7783, "max": 0.9723
+    },
+    "Grok": {
+      "n": 30, "mean": 0.9853, "sd": 0.0104, "median": 0.9897,
+      "ci_low": 0.9816, "ci_high": 0.9890, "min": 0.9607, "max": 0.9957
+    }
+  },
+  "kruskal_wallis": { "H": 75.806, "p": 3.5e-17 },
+  "pairwise": {
+    "Claude vs ChatGPT": { "U": 870.0, "p_raw": 3.2e-11, "p_bonf": 9.6e-11, "r": 0.934 },
+    "Claude vs Grok":    { "U": 900.0, "p_raw": 3.8e-13, "p_bonf": 1.1e-12, "r": 1.000 },
+    "ChatGPT vs Grok":   { "U": 882.0, "p_raw": 2.5e-10, "p_bonf": 7.5e-10, "r": 0.980 }
+  }
+}
