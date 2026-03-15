@@ -77,7 +77,7 @@ echo "Node: $($NODE_BIN --version)  npm: $($NPM_BIN --version)"
 echo ""
 echo "[3/5] Building app..."
 cd "$APP_DIR"
-$NPM_BIN ci --omit=dev
+$NPM_BIN ci
 NODE_ENV=production $NPM_BIN run build
 
 # -- 4. Systemd service -------------------------------------------------------
