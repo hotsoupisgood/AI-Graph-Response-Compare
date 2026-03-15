@@ -4,96 +4,43 @@ import { useState } from 'react';
 import ImageUploader from '@/components/ImageUploader';
 import ResponseCard from '@/components/ResponseCard';
 import SentimentChart from '@/components/SentimentChart';
+import type { AIResponse } from '@/types';
 
-interface AIResponse {
-  success: boolean;
-  response?: string;
-  error?: string;
-}
-
-interface Sentiment {
-  sentiment: 'positive' | 'neutral' | 'negative';
-  score: number;
-}
+type ModelKey = 'claude' | 'chatgpt' | 'grok';
 
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [claudeResponse, setClaudeResponse] = useState<AIResponse | null>(null);
-  const [gptResponse, setGptResponse] = useState<AIResponse | null>(null);
-  const [grokResponse, setGrokResponse] = useState<AIResponse | null>(null);
-  const [claudeSentiment, setClaudeSentiment] = useState<Sentiment | null>(null);
-  const [gptSentiment, setGptSentiment] = useState<Sentiment | null>(null);
-  const [grokSentiment, setGrokSentiment] = useState<Sentiment | null>(null);
+  const [responses, setResponses] = useState<Record<ModelKey, AIResponse | null>>({
+    claude: null, chatgpt: null, grok: null,
+  });
 
   const handleImageSelect = async (base64: string, type: string) => {
     setImage(base64);
     setIsLoading(true);
-    setClaudeResponse(null);
-    setGptResponse(null);
-    setGrokResponse(null);
-    setClaudeSentiment(null);
-    setGptSentiment(null);
-    setGrokSentiment(null);
+    setResponses({ claude: null, chatgpt: null, grok: null });
 
     try {
-      // Get AI analyses
-      const analyzeRes = await fetch('/api/analyze', {
+      const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: base64, mediaType: type }),
       });
-
-      const data = await analyzeRes.json();
-      setClaudeResponse(data.claude);
-      setGptResponse(data.chatgpt);
-      setGrokResponse(data.grok);
-
-      // Get sentiments for successful responses
-      const textsToAnalyze: string[] = [];
-      const indices: ('claude' | 'gpt' | 'grok')[] = [];
-
-      if (data.claude?.success) {
-        textsToAnalyze.push(data.claude.response);
-        indices.push('claude');
+      if (res.ok) {
+        setResponses(await res.json());
+      } else {
+        const err: AIResponse = { success: false, error: 'Failed to analyze' };
+        setResponses({ claude: err, chatgpt: err, grok: err });
       }
-      if (data.chatgpt?.success) {
-        textsToAnalyze.push(data.chatgpt.response);
-        indices.push('gpt');
-      }
-      if (data.grok?.success) {
-        textsToAnalyze.push(data.grok.response);
-        indices.push('grok');
-      }
-
-      if (textsToAnalyze.length > 0) {
-        const sentimentRes = await fetch('/api/sentiment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ texts: textsToAnalyze }),
-        });
-
-        const sentimentData = await sentimentRes.json();
-
-        indices.forEach((key, i) => {
-          if (key === 'claude') {
-            setClaudeSentiment(sentimentData.sentiments[i]);
-          } else if (key === 'gpt') {
-            setGptSentiment(sentimentData.sentiments[i]);
-          } else {
-            setGrokSentiment(sentimentData.sentiments[i]);
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setClaudeResponse({ success: false, error: 'Failed to analyze' });
-      setGptResponse({ success: false, error: 'Failed to analyze' });
-      setGrokResponse({ success: false, error: 'Failed to analyze' });
+    } catch {
+      const err: AIResponse = { success: false, error: 'Failed to analyze' };
+      setResponses({ claude: err, chatgpt: err, grok: err });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const hasResults = isLoading || Object.values(responses).some(Boolean);
 
   return (
     <main className="min-h-screen bg-white">
@@ -117,36 +64,25 @@ export default function Home() {
         </div>
 
         <div className="border-t border-gray-200 pt-8">
+          {hasResults && (
+            <p className="text-gray-600 mb-6 text-center">
+              We asked 3 LLMs this prompt about your plot:{' '}
+              <span className="font-medium text-gray-900">&ldquo;Interpret this plot.&rdquo;</span>
+            </p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <ResponseCard
-              title="Claude"
-              response={claudeResponse?.success ? claudeResponse.response ?? null : null}
-              error={claudeResponse?.success === false ? claudeResponse.error ?? null : null}
-              isLoading={isLoading}
-            />
-            <ResponseCard
-              title="ChatGPT"
-              response={gptResponse?.success ? gptResponse.response ?? null : null}
-              error={gptResponse?.success === false ? gptResponse.error ?? null : null}
-              isLoading={isLoading}
-            />
-            <ResponseCard
-              title="Grok"
-              response={grokResponse?.success ? grokResponse.response ?? null : null}
-              error={grokResponse?.success === false ? grokResponse.error ?? null : null}
-              isLoading={isLoading}
-            />
+            <ResponseCard title="Claude" data={responses.claude} isLoading={isLoading} />
+            <ResponseCard title="ChatGPT" data={responses.chatgpt} isLoading={isLoading} />
+            <ResponseCard title="Grok" data={responses.grok} isLoading={isLoading} />
           </div>
         </div>
 
         <div className="mt-8">
-          <SentimentChart
-            data={[
-              { name: 'Claude', sentiment: claudeSentiment },
-              { name: 'ChatGPT', sentiment: gptSentiment },
-              { name: 'Grok', sentiment: grokSentiment },
-            ]}
-          />
+          <SentimentChart data={[
+            { name: 'Claude', sentiment: responses.claude?.sentiment },
+            { name: 'ChatGPT', sentiment: responses.chatgpt?.sentiment },
+            { name: 'Grok', sentiment: responses.grok?.sentiment },
+          ]} />
         </div>
       </div>
     </main>

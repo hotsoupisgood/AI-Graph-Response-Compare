@@ -34,6 +34,15 @@ export default function About() {
           </section>
 
           <section>
+            <h2 className="text-xl font-semibold mb-3">Methodology</h2>
+            <ul className="list-disc list-inside space-y-2">
+              <li>All three models run in parallel with identical inputs</li>
+              <li>Temperature is set to <span className="font-mono">0</span> on all models for consistent, deterministic responses</li>
+              <li>Sentiment is scored using <a href="https://github.com/cjhutto/vaderSentiment" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">VADER</a> — it measures the emotional tone of each AI&apos;s language, not the data itself</li>
+            </ul>
+          </section>
+
+          <section>
             <h2 className="text-xl font-semibold mb-3">Currently supported</h2>
             <ul className="list-disc list-inside space-y-1">
               <li>Claude (Anthropic)</li>
@@ -46,7 +55,7 @@ export default function About() {
             <h2 className="text-xl font-semibold mb-3">Source</h2>
             <p>
               <a
-                href="https://github.com"
+                href="https://github.com/hotsoupisgood/AI-Graph-Response-Compare"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline"

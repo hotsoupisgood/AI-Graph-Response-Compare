@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 interface ImageUploaderProps {
   onImageSelect: (base64: string, mediaType: string) => void;
@@ -9,34 +9,28 @@ interface ImageUploaderProps {
 }
 
 export default function ImageUploader({ onImageSelect, currentImage, isLoading }: ImageUploaderProps) {
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const [mediaType, setMediaType] = useState('image/jpeg');
 
+  const readFile = useCallback((file: File | Blob, type: string) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      const mediaType = file.type;
-      onImageSelect(base64, mediaType);
+      const base64 = (reader.result as string).split(',')[1];
+      setMediaType(type);
+      onImageSelect(base64, type);
     };
     reader.readAsDataURL(file);
   }, [onImageSelect]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) readFile(file, file.type);
+  }, [readFile]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      const mediaType = file.type;
-      onImageSelect(base64, mediaType);
-    };
-    reader.readAsDataURL(file);
-  }, [onImageSelect]);
+    if (file?.type.startsWith('image/')) readFile(file, file.type);
+  }, [readFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -45,17 +39,14 @@ export default function ImageUploader({ onImageSelect, currentImage, isLoading }
   const handleExampleClick = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    const response = await fetch('/example.jpg');
-    const blob = await response.blob();
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      onImageSelect(base64, 'image/jpeg');
-    };
-    reader.readAsDataURL(blob);
-  }, [onImageSelect]);
+    try {
+      const response = await fetch('/example.jpg');
+      const blob = await response.blob();
+      readFile(blob, 'image/jpeg');
+    } catch {
+      console.error('Failed to load example image');
+    }
+  }, [readFile]);
 
   return (
     <div
@@ -66,7 +57,7 @@ export default function ImageUploader({ onImageSelect, currentImage, isLoading }
       {currentImage ? (
         <div className="space-y-4">
           <img
-            src={`data:image/png;base64,${currentImage}`}
+            src={`data:${mediaType};base64,${currentImage}`}
             alt="Uploaded plot"
             className="max-h-64 mx-auto rounded"
           />
@@ -88,9 +79,7 @@ export default function ImageUploader({ onImageSelect, currentImage, isLoading }
             <div className="text-gray-600">
               Drop a plot image here or <span className="underline">browse</span>
             </div>
-            <div className="text-sm text-gray-400">
-              Supports PNG, JPG, GIF, WebP
-            </div>
+            <div className="text-sm text-gray-400">Supports PNG, JPG, GIF, WebP</div>
             <button
               type="button"
               onClick={handleExampleClick}

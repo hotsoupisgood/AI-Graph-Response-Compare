@@ -1,24 +1,16 @@
 'use client';
 
-interface Sentiment {
-  sentiment: 'positive' | 'neutral' | 'negative';
-  score: number;
-}
+import type { Sentiment } from '@/types';
 
 interface SentimentChartProps {
-  data: {
-    name: string;
-    sentiment: Sentiment | null;
-  }[];
+  data: { name: string; sentiment: Sentiment | null | undefined }[];
 }
 
 export default function SentimentChart({ data }: SentimentChartProps) {
-  const hasData = data.some(d => d.sentiment !== null);
-
+  const hasData = data.some(d => d.sentiment != null);
   if (!hasData) return null;
 
-  // Find max absolute value for scaling
-  const maxScore = Math.max(...data.filter(d => d.sentiment).map(d => Math.abs(d.sentiment!.score)), 0.5);
+  const maxScore = Math.max(0.5, ...data.flatMap(d => d.sentiment ? [Math.abs(d.sentiment.score)] : []));
 
   const getBarColor = (score: number) => {
     if (score > 0.1) return 'bg-green-500';
@@ -37,9 +29,7 @@ export default function SentimentChart({ data }: SentimentChartProps) {
               {sentiment ? (
                 <>
                   <div className="flex-1 h-6 bg-gray-100 rounded relative">
-                    {/* Center line */}
                     <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300" />
-                    {/* Bar */}
                     <div
                       className={`absolute top-1 bottom-1 rounded ${getBarColor(sentiment.score)}`}
                       style={{
