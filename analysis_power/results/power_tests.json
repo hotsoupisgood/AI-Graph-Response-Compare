@@ -1,0 +1,198 @@
+{
+  "CO2 / Climate": {
+    "n": {
+      "Claude": 250,
+      "ChatGPT": 250,
+      "Grok": 250
+    },
+    "kruskal": {
+      "H": 151.56453053820056,
+      "p": 1.2251249021076362e-33
+    },
+    "pairwise": {
+      "Claude vs ChatGPT": {
+        "mean_diff": 0.02161639999999987,
+        "boot_ci95": [
+          -0.03891691999999996,
+          0.07698565999999979
+        ],
+        "U": 41330.0,
+        "p_raw": 4.380049824673596e-10,
+        "p_bonf": 1.3140149474020788e-09,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.32256
+      },
+      "Claude vs Grok": {
+        "mean_diff": 0.2930315999999999,
+        "boot_ci95": [
+          0.22254192999999994,
+          0.36007842
+        ],
+        "U": 48614.0,
+        "p_raw": 5.974074159079535e-27,
+        "p_bonf": 1.7922222477238607e-26,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.555648
+      },
+      "ChatGPT vs Grok": {
+        "mean_diff": 0.2714152,
+        "boot_ci95": [
+          0.21775461,
+          0.3227324399999999
+        ],
+        "U": 45618.0,
+        "p_raw": 5.863018343566846e-19,
+        "p_bonf": 1.758905503070054e-18,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.459776
+      }
+    }
+  },
+  "COVID deaths & masks": {
+    "n": {
+      "Claude": 250,
+      "ChatGPT": 250,
+      "Grok": 250
+    },
+    "kruskal": {
+      "H": 120.5638327613676,
+      "p": 6.605357949055382e-27
+    },
+    "pairwise": {
+      "Claude vs ChatGPT": {
+        "mean_diff": 0.1487192,
+        "boot_ci95": [
+          0.04612701000000001,
+          0.25515484999999993
+        ],
+        "U": 37662.5,
+        "p_raw": 7.205005427587067e-05,
+        "p_bonf": 0.00021615016282761198,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.2052
+      },
+      "Claude vs Grok": {
+        "mean_diff": 0.5791580000000001,
+        "boot_ci95": [
+          0.46812924999999994,
+          0.6905549
+        ],
+        "U": 46654.5,
+        "p_raw": 1.4846560726356804e-21,
+        "p_bonf": 4.453968217907041e-21,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.492944
+      },
+      "ChatGPT vs Grok": {
+        "mean_diff": 0.4304388,
+        "boot_ci95": [
+          0.33733281000000004,
+          0.52316184
+        ],
+        "U": 45472.5,
+        "p_raw": 1.3167893129571009e-18,
+        "p_bonf": 3.950367938871303e-18,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.45512
+      }
+    }
+  },
+  "Gender pay gap": {
+    "n": {
+      "Claude": 250,
+      "ChatGPT": 250,
+      "Grok": 250
+    },
+    "kruskal": {
+      "H": 110.72294549994359,
+      "p": 9.053528533062663e-25
+    },
+    "pairwise": {
+      "Claude vs ChatGPT": {
+        "mean_diff": 0.0386532,
+        "boot_ci95": [
+          -0.06276485000000001,
+          0.14183773000000002
+        ],
+        "U": 33272.5,
+        "p_raw": 0.21066294200024427,
+        "p_bonf": 0.6319888260007328,
+        "significant_at_alpha_over_3": false,
+        "cliffs_delta": 0.06472
+      },
+      "Claude vs Grok": {
+        "mean_diff": -0.4161172000000001,
+        "boot_ci95": [
+          -0.49805026999999996,
+          -0.33806764000000006
+        ],
+        "U": 18227.0,
+        "p_raw": 7.517273372920342e-16,
+        "p_bonf": 2.2551820118761023e-15,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": -0.416736
+      },
+      "ChatGPT vs Grok": {
+        "mean_diff": -0.4547704000000001,
+        "boot_ci95": [
+          -0.53277208,
+          -0.37565625
+        ],
+        "U": 15132.5,
+        "p_raw": 1.9104023521324993e-23,
+        "p_bonf": 5.731207056397497e-23,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": -0.51576
+      }
+    }
+  },
+  "Race & IQ": {
+    "n": {
+      "Claude": 250,
+      "ChatGPT": 250,
+      "Grok": 250
+    },
+    "kruskal": {
+      "H": 72.1219163953778,
+      "p": 2.182352209343431e-16
+    },
+    "pairwise": {
+      "Claude vs ChatGPT": {
+        "mean_diff": 0.4394816,
+        "boot_ci95": [
+          0.33165208000000007,
+          0.5468017399999999
+        ],
+        "U": 43901.5,
+        "p_raw": 4.811980985142646e-15,
+        "p_bonf": 1.4435942955427937e-14,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.404848
+      },
+      "Claude vs Grok": {
+        "mean_diff": 0.147502,
+        "boot_ci95": [
+          0.03979893000000002,
+          0.25156294
+        ],
+        "U": 37875.0,
+        "p_raw": 4.1140870443998485e-05,
+        "p_bonf": 0.00012342261133199545,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": 0.212
+      },
+      "ChatGPT vs Grok": {
+        "mean_diff": -0.2919796,
+        "boot_ci95": [
+          -0.39466889,
+          -0.18925298000000007
+        ],
+        "U": 22244.0,
+        "p_raw": 2.475400436864584e-08,
+        "p_bonf": 7.426201310593752e-08,
+        "significant_at_alpha_over_3": true,
+        "cliffs_delta": -0.288192
+      }
+    }
+  }
+}

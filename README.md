@@ -44,3 +44,22 @@ Create a `.env.local` file with your API keys:
 ANTHROPIC_API_KEY=your-claude-key
 OPENAI_API_KEY=your-openai-key
 ```
+
+## Powered experiment & results page
+
+`analysis_power/` holds the pre-registered follow-up experiment: 250 responses per
+model per chart for Claude Opus 5, GPT-5.5 and Grok 4.7, VADER-scored, with
+pairwise Mann-Whitney tests. See `analysis_power/STEPS.md` for the one-page
+version and `analysis_power/DETAILED_PLAN.md` for the design, decisions and run log.
+
+```bash
+cd analysis_power
+python power_analysis.py          # sample-size calculation from existing variance
+python power_study.py --n 250     # collect (resumable; needs .env.local keys)
+python analyse_power_study.py     # tests, plots, and data for the results page
+```
+
+`docs/` is a static d3 page that tells the experiment as a live flowchart and
+lets you read every response. Serve it from any static host (GitHub Pages from
+`/docs`). No keys or private
+data are in it: only model outputs, scores and the four chart images.

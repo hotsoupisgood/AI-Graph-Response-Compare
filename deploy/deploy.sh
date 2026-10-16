@@ -15,9 +15,17 @@ APP_PORT=3000
 SERVICE_NAME="$APP_NAME"
 
 if [[ -n "$DOMAIN" ]]; then
-  SERVER_NAME="${DOMAIN} www.${DOMAIN}"
+  # Only add www. for apex domains (not subdomains)
+  if [[ "$DOMAIN" =~ ^[^.]+\.[^.]+$ ]]; then
+    SERVER_NAME="${DOMAIN} www.${DOMAIN}"
+    CERTBOT_DOMAINS="-d ${DOMAIN} -d www.${DOMAIN}"
+  else
+    SERVER_NAME="${DOMAIN}"
+    CERTBOT_DOMAINS="-d ${DOMAIN}"
+  fi
 else
   SERVER_NAME="_"
+  CERTBOT_DOMAINS=""
 fi
 
 echo "=================================================="
@@ -160,9 +168,9 @@ nginx -t && systemctl reload nginx
 if [[ -n "$DOMAIN" ]]; then
   echo ""
   echo "Requesting SSL certificate..."
-  certbot --nginx -d ${DOMAIN} -d www.${DOMAIN} --non-interactive --agree-tos --register-unsafely-without-email || {
+  certbot --nginx ${CERTBOT_DOMAINS} --non-interactive --agree-tos --register-unsafely-without-email || {
     echo "WARNING: certbot failed. Run manually:"
-    echo "  certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
+    echo "  certbot --nginx ${CERTBOT_DOMAINS}"
   }
 fi
 

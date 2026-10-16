@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM Plot Sentiment (iterative version)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root { color-scheme: light dark;
+    --bg:#fafaf9; --ink:#1c1917; --muted:#78716c; --grid:#e7e5e4; --panel:#fff; --border:#d6d3d1;
+    --accent:#2563eb; --ok:#16a34a; --warn:#d97706; --pending:#a8a29e;
+    --claude:#d97706; --chatgpt:#16a34a; --grok:#2563eb; }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg:#111; --ink:#f5f5f4; --muted:#a8a29e; --grid:#2a2a2a; --panel:#1a1a1a; --border:#3a3a3a;
+    --accent:#60a5fa; --ok:#4ade80; --warn:#fbbf24; --pending:#57534e;
+    --claude:#fbbf24; --chatgpt:#4ade80; --grok:#60a5fa; } }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; }
+  main { max-width: 1020px; margin: 0 auto; padding: 28px 20px 64px; }
+  h1 { font-size: 24px; margin: 0 0 4px; } .sub { color: var(--muted); margin: 0 0 6px; font-size: 14px; }
+  .key { display:flex; gap:16px; font-size:12.5px; color:var(--muted); margin: 6px 0 14px; flex-wrap: wrap; }
+  .key span::before { content:""; display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:middle; background:var(--c); }
+  .wrap { display:grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 16px; align-items:start; }
+  @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px; overflow-x:auto; }
+  .detail { position: sticky; top: 12px; }
+  .detail h3 { margin: 0 0 6px; font-size: 15px; } .detail p { margin: 0 0 8px; color: var(--muted); font-size: 13.5px; }
+  #flow { display:block; max-width:100%; height:auto; }
+  svg text { fill: var(--ink); } svg .muted { fill: var(--muted); font-size: 12px; }
+  svg .code { font-family: ui-monospace, Menlo, monospace; font-size: 11px; fill: var(--muted); }
+  svg .node .box { fill: var(--bg); stroke: var(--pending); stroke-width: 1.5; }
+  svg .node.done .box { stroke: var(--ok); } svg .node.active .box { stroke: var(--accent); stroke-width: 2.5; }
+  svg .node.prelim .box { stroke: var(--warn); } svg .node.selected .box { stroke-width: 3; }
+  svg .badge { font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+  svg .num { font-weight: 700; font-size: 13px; fill: var(--accent); } svg .title { font-weight: 600; font-size: 15px; }
+  svg .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; } svg .lbl { font-size: 11px; fill: var(--muted); }
+  svg .edge { fill:none; stroke: var(--muted); stroke-width: 2; } svg .edge.loop { stroke: var(--warn); stroke-dasharray: 6 4; } svg .edge.yes { stroke: var(--ok); }
+  svg .elabel { font-size: 12px; fill: var(--muted); } svg .elabel.loop { fill: var(--warn); } svg .elabel.yes { fill: var(--ok); }
+  svg .grid line { stroke: var(--grid); } svg .axis path, svg .axis line { stroke: var(--grid); } svg .axis text { font-size: 10.5px; }
+  .tip { position: fixed; pointer-events: none; background: var(--panel); color: var(--ink); border:1px solid var(--border); border-radius: 6px; padding: 6px 9px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15); display:none; z-index: 9; white-space: nowrap; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; } th, td { text-align:left; padding: 5px 6px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 500; } td.sig { font-weight: 700; color: var(--ok); }
+  select { font: inherit; font-size: 13px; padding: 3px 6px; background: var(--panel); color: var(--ink); border:1px solid var(--border); border-radius:6px; }
+  code { font-size: 12px; }
+  .formula { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: var(--ink) !important; background: var(--bg); padding: 6px 8px; border-radius: 6px; }
+  .thumbs { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; } .thumbs figure { margin:0; } .thumbs img { width:100%; border:1px solid var(--border); border-radius:6px; background:#fff; cursor: zoom-in; }
+  .thumbs figcaption { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  img.chart { display:block; width:100%; max-width:340px; border:1px solid var(--border); border-radius:6px; background:#fff; margin: 0 0 8px; cursor: zoom-in; }
+  .lightbox { position:fixed; inset:0; background:rgba(0,0,0,.75); display:none; align-items:center; justify-content:center; z-index:20; cursor: zoom-out; }
+  .lightbox img { max-width:92vw; max-height:92vh; background:#fff; border-radius:8px; }
+</style>
+</head>
+<body>
+<main>
+  <p class="sub" style="padding:8px 12px;border:1px solid var(--warn);border-radius:8px;color:var(--ink)"><b>Earlier version, kept for the record (2026-10-14).</b> This draft had the panel loop back and change n, prompt, charts or models after seeing results. We dropped that because re-running until satisfied is optional stopping. The current page is <a href="index.html" style="color:var(--accent)">index.html</a>.</p>
+  <h1>How do LLMs frame controversial charts?</h1>
+  <p class="sub">VADER sentiment of each model's reply to <em>“Interpret this plot.”</em>, repeated per chart. This flowchart represents a self-driving analysis built for this project: each box reads the latest data and works out its own numbers and state. The human check comes before the main run: a panel reassesses the required n from the pilot's variance and increases it if needed, then the design is frozen and the tests run once. Click a box for the full view.</p>
+  <p class="sub" id="sampling"></p>
+  <p class="sub" id="meta">Loading…</p>
+  <div class="key"><span style="--c:var(--ok)">done</span><span style="--c:var(--accent)">in progress</span><span style="--c:var(--warn)">preliminary (data still coming in)</span><span style="--c:var(--pending)">not started</span></div>
+  <div class="wrap">
+    <div class="panel"><svg id="flow"></svg></div>
+    <div class="panel detail" id="detail"><h3>Click a step</h3><p>Details appear here.</p></div>
+  </div>
+</main>
+<div class="tip" id="tip"></div>
+<div class="lightbox" id="lightbox"><img alt=""></div>
+<script>
+const MODELS = ["Claude","ChatGPT","Grok"];
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const colour = m => css("--" + m.toLowerCase());
+const tip = d3.select("#tip");
+const lb = d3.select("#lightbox").on("click", () => lb.style("display","none"));
+document.addEventListener("click", e => { if (e.target.tagName === "IMG" && e.target.closest("#detail")) { lb.select("img").attr("src", e.target.src); lb.style("display","flex"); } });
+const showTip = (ev, html) => tip.style("display","block").html(html).style("left",(ev.clientX+12)+"px").style("top",(ev.clientY+12)+"px");
+const hideTip = () => tip.style("display","none");
+const fmt = d3.format("+.3f"), f2 = d3.format(".2f"), fp = p => p < 0.001 ? "<0.001" : p.toFixed(3);
+// normal quantile (Acklam) for the power formula
+function qnorm(p){const a=[-3.969683028665376e1,2.209460984245205e2,-2.759285104469687e2,1.383577518672690e2,-3.066479806614716e1,2.506628277459239],b=[-5.447609879822406e1,1.615858368580409e2,-1.556989798598866e2,6.680131188771972e1,-1.328068155288572e1],c=[-7.784894002430293e-3,-3.223964580411365e-1,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783],d=[7.784695709041462e-3,3.224671290700398e-1,2.445134137142996,3.754408661907416];const pl=.02425,ph=1-pl;let q,r;if(p<pl){q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}if(p<=ph){q=p-.5;r=q*q;return(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1)}q=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1)}
+const nReq = (sd, delta, alpha, power) => Math.ceil(2*Math.pow((qnorm(1-alpha/2)+qnorm(power))*sd/delta,2)/0.955);
+
+Promise.all([
+  d3.csv("data/descriptives.csv", d3.autoType), d3.csv("data/scores.csv", d3.autoType),
+  d3.json("data/tests.json"), d3.json("data/meta.json"),
+]).then(([desc, scores, tests, meta]) => {
+  const topics = [...new Set(desc.map(d => d.topic))];
+  const present = MODELS.filter(m => scores.some(d => d.model === m));
+  const TARGET = meta.target_n ?? 250, DELTA = meta.delta ?? 0.1, ALPHA = meta.alpha ?? 0.05;
+  const perCell = topics.length;
+  const counts = Object.fromEntries(MODELS.map(m => [m, scores.filter(d => d.model === m).length]));
+  const minCell = d3.min(MODELS.flatMap(m => topics.map(t => scores.filter(d => d.model===m && d.topic===t).length)));
+  const collected = minCell >= TARGET;
+  const nNeed = nReq(meta.pooled_sd, DELTA, ALPHA/3, 0.8), nNeedRaw = nReq(meta.pooled_sd, DELTA, ALPHA, 0.8);
+  const SD0 = meta.sd_prior ?? 0.39, n0 = nReq(SD0, DELTA, ALPHA, 0.8);            // earlier-generation runs → original target
+  const zsum = qnorm(1-ALPHA/2)+qnorm(0.8), zsum3 = qnorm(1-ALPHA/6)+qnorm(0.8);     // α and α/3 (Bonferroni × 3)
+  const minDelta = zsum3*meta.pooled_sd*Math.sqrt(2/TARGET)/Math.sqrt(0.955);         // detectable Δ at the target, corrected test
+  const pairRows = []; for (const [topic, r] of Object.entries(tests)) for (const [pair, v] of Object.entries(r.pairwise||{})) pairRows.push({topic, pair, ...v});
+  const nSig = pairRows.filter(d => d.significant_at_alpha_over_3).length;
+  d3.select("#sampling").html(`<b>Consistency controls:</b> ${meta.sampling ?? "temperature not set (provider defaults)"}. Run-to-run variation is therefore the models' own, not an artefact of a tuned temperature.`);
+  d3.select("#meta").text(`${meta.rows} responses so far · ${present.map(m => `${m} = ${meta.models[m]}`).join(" · ")} · updated ${meta.generated_utc.slice(0,16).replace("T"," ")} UTC`);
+
+  // ── layout ──────────────────────────────────────────────────────────────
+  const W = 720, X = 40, BW = 470, GAP = 34;
+  const steps = [
+    { id:"power", n:"1", title:"Power calculation", h:96, code:"power_analysis.py",
+      state: "done",
+      detail: `<h3>1. Power calculation</h3>
+        <p>Calls per model per chart, two-sample test, 80% power:</p>
+        <p class="formula">n = 2 · ( (z<sub>1−α/2</sub> + z<sub>0.8</sub>) · SD / Δ )² ÷ 0.955</p>
+        <p><b>Where 250 came from.</b> The earlier runs (previous model generation) had SD = ${SD0}. With Δ = ${DELTA} and α = ${ALPHA}:</p>
+        <p class="formula">n = 2 · ( ${zsum.toFixed(2)} · ${SD0} / ${DELTA} )² ÷ 0.955 ≈ <b>${n0}</b></p>
+        <p><b>What the pilot changed.</b> The current models write longer, more varied answers: SD so far is <b>${meta.pooled_sd.toFixed(3)}</b>. Solving the same formula for Δ at n = ${TARGET}, with the Bonferroni-corrected α/3 the tests actually use (z = ${zsum3.toFixed(2)}):</p>
+        <p class="formula">Δ = ${zsum3.toFixed(2)} · ${meta.pooled_sd.toFixed(3)} · √(2/${TARGET}) ÷ √0.955 ≈ <b>${minDelta.toFixed(2)}</b></p>
+        <p>So at ${TARGET} per cell we can reliably detect a difference of about <b>${minDelta.toFixed(2)}</b> in VADER compound, not the ${DELTA} first planned. Reaching ${DELTA} would need ≈ ${nNeedRaw} per cell (${nNeed} with Bonferroni × 3).</p>
+        <p><b>That is fine.</b> ${minDelta.toFixed(2)} is still a small effect on a −1…+1 scale, and the differences the pilot is already showing are several times larger than that. The question we care about, whether the models frame the same chart differently, is answerable at n = ${TARGET}. Only if the panel wants to resolve differences as small as ${DELTA} do we loop back and raise n.</p>` },
+    { id:"run", n:"2", title:`Run ${TARGET} calls of each`, h:104, code:"power_study.py --n "+TARGET,
+      state: collected ? "done" : "active",
+      detail: `<h3>2. Collect responses</h3><p>Each model answers “Interpret this plot.” ${TARGET} times per chart across ${perCell} charts (${TARGET*perCell} per model). Replies are VADER-scored and cached so the job resumes after interruptions.</p>` +
+              MODELS.map(m => `<p><b style="color:${colour(m)}">${m}</b> ${counts[m]} / ${TARGET*perCell}${counts[m]===0 ? " — not started (API credits)" : ""}</p>`).join("") +
+              `<p style="margin-top:10px">The ${perCell} charts every model is shown:</p><div class="thumbs">` +
+              topics.map(t => `<figure><img src="${meta.images?.[t] ?? ""}" alt="${t}"><figcaption>${t}</figcaption></figure>`).join("") + `</div>` },
+    { id:"test", n:"3", title:"Significance test", h:96, code:"analyse_power_study.py",
+      state: pairRows.length === 0 ? "pending" : collected ? "done" : "prelim",
+      detail: `<h3>3. Pairwise tests</h3><p>Mann-Whitney U per model pair within each chart, α/3 = ${(ALPHA/3).toFixed(4)}. Cliff's δ and a bootstrap 95% CI on the mean difference.${collected ? "" : " <b>Preliminary</b>: n is still below target."}</p><div id="pairTable"></div>` },
+    { id:"results", n:"4", title:"Results", h:216, code:"docs/index.html",
+      state: desc.length === 0 ? "pending" : collected ? "done" : "prelim",
+      detail: `<h3>4. Every response</h3><p>Mean sentiment per chart and model with 95% CI is drawn in the box. Below: each individual reply for one chart.</p><p><label>Chart <select id="topicSel"></select></label></p><img id="topicImg" class="chart" alt=""><svg id="strip" width="340" height="200"></svg>` },
+  ];
+  const decision = { id:"panel", n:"5", title:"Show to panel", sub: collected ? "ready for review" : "waiting for data", state: collected ? "active" : "pending",
+    detail: `<h3>5. Panel review</h3><p>Present this page. If the panel objects to n, prompt, charts or models, change it and return to step 1. Loop until they sign off.</p>` };
+  const done = { id:"done", title:"Done — write up", detail:`<h3>Write-up</h3><p>n, SD assumption, power, pre-registered tests, and the panel's sign-off.</p>` };
+
+  let y = 20; steps.forEach(s => { s.top = y; s.bottom = y + s.h; s.cx = X + BW/2; y = s.bottom + GAP; });
+  const DH = 96, DW = 240; decision.top = y; decision.bottom = y + DH; decision.cx = X + BW/2; const dcy = y + DH/2; y = decision.bottom + GAP;
+  const FY = y; const H = FY + 48 + 20;
+  const svg = d3.select("#flow").attr("viewBox",[0,0,W,H]).attr("width",W).attr("height",H);
+  svg.append("defs").html(`<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/></marker>`);
+  const detail = d3.select("#detail");
+  const STATE_LABEL = { done:"DONE", active:"IN PROGRESS", prelim:"PRELIMINARY", pending:"NOT STARTED" };
+  const STATE_VAR = { done:"--ok", active:"--accent", prelim:"--warn", pending:"--pending" };
+
+  function select(d){ svg.selectAll(".node").classed("selected", n => n.id === d.id); detail.html(d.detail); if (d.id==="test") drawPairTable(); if (d.id==="results") drawStrip(); }
+  function node(parent, d, shape){
+    const g = parent.append("g").datum(d).attr("class", `node ${d.state||""}`).style("cursor","pointer").on("click", (ev,d) => { history.replaceState(null,"","#"+d.id); select(d); });
+    shape(g);
+    if (d.n) {
+      g.append("text").attr("class","num").attr("x", d.cx - BW/2 + 16).attr("y", d.top + 26).text(d.n);
+      g.append("text").attr("class","title").attr("x", d.cx - BW/2 + 36).attr("y", d.top + 26).text(d.title);
+      if (d.state) { const lab = STATE_LABEL[d.state]; const bx = d.cx + BW/2 - 14 - lab.length*7.2;
+        g.append("text").attr("class","badge").attr("x", d.cx + BW/2 - 14).attr("y", d.top + 24).attr("text-anchor","end").style("fill", `var(${STATE_VAR[d.state]})`).text(lab); }
+    }
+    return g;
+  }
+  const rectShape = d => g => g.append("rect").attr("class","box").attr("x", d.cx-BW/2).attr("y", d.top).attr("width", BW).attr("height", d.h).attr("rx", 10);
+
+  // 1 power: three numbers
+  { const d = steps[0], g = node(svg, d, rectShape(d)); const x0 = d.cx - BW/2 + 36, yb = d.top + 64;
+    [["SD so far", meta.pooled_sd.toFixed(3)], [`n needed (α/3)`, nNeed], ["n needed (α)", nNeedRaw], ["target n", TARGET]].forEach(([l,v],i) => {
+      g.append("text").attr("class","big").attr("x", x0 + i*108).attr("y", yb).text(v).style("fill", l==="target n" && nNeed > TARGET ? "var(--warn)" : null);
+      g.append("text").attr("class","lbl").attr("x", x0 + i*108).attr("y", yb + 14).text(l); }); }
+  // 2 run: progress bars
+  { const d = steps[1], g = node(svg, d, rectShape(d)); const x0 = d.cx - BW/2 + 36, bw = BW - 36 - 130; const sx = d3.scaleLinear([0, TARGET*perCell], [0, bw]);
+    MODELS.forEach((m,i) => { const yy = d.top + 40 + i*20;
+      g.append("text").attr("class","lbl").attr("x", x0).attr("y", yy+9).text(m);
+      g.append("rect").attr("x", x0+60).attr("y", yy).attr("width", bw).attr("height", 10).attr("rx", 5).attr("fill","var(--grid)");
+      g.append("rect").attr("x", x0+60).attr("y", yy).attr("width", Math.max(0, sx(counts[m]))).attr("height", 10).attr("rx", 5).attr("fill", colour(m));
+      g.append("text").attr("class","lbl").attr("x", x0+60+bw+8).attr("y", yy+9).text(`${counts[m]} / ${TARGET*perCell}`); }); }
+  // 3 test: significant pairs
+  { const d = steps[2], g = node(svg, d, rectShape(d)); const x0 = d.cx - BW/2 + 36, yb = d.top + 64;
+    const minP = d3.min(pairRows, r => r.p_bonf);
+    [["pairs tested", pairRows.length], ["significant at α/3", nSig], ["smallest adj. p", minP == null ? "–" : fp(minP)], ["largest |δ|", pairRows.length ? f2(d3.max(pairRows, r => Math.abs(r.cliffs_delta))) : "–"]].forEach(([l,v],i) => {
+      g.append("text").attr("class","big").attr("x", x0 + i*108).attr("y", yb).text(v);
+      g.append("text").attr("class","lbl").attr("x", x0 + i*108).attr("y", yb + 14).text(l); }); }
+  // 4 results: embedded means ± CI chart
+  { const d = steps[3], g = node(svg, d, rectShape(d));
+    const M = {l: d.cx-BW/2+48, r: d.cx+BW/2-16, t: d.top+44, b: d.bottom-30};
+    const x = d3.scaleBand(topics, [M.l, M.r]).padding(0.25), xm = d3.scalePoint(present, [0, x.bandwidth()]).padding(0.5);
+    const yy = d3.scaleLinear([-1, 1], [M.b, M.t]).clamp(true);
+    g.append("g").attr("class","grid").selectAll("line").data(yy.ticks(4)).join("line").attr("x1",M.l).attr("x2",M.r).attr("y1",yy).attr("y2",yy);
+    g.append("line").attr("x1",M.l).attr("x2",M.r).attr("y1",yy(0)).attr("y2",yy(0)).attr("stroke","currentColor").attr("stroke-dasharray","3 3").attr("opacity",.5);
+    g.append("g").attr("class","axis").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(yy).ticks(4).tickFormat(d3.format("+.1f")).tickSize(0)).select(".domain").remove();
+    g.append("g").attr("class","axis").attr("transform",`translate(0,${M.b})`).call(d3.axisBottom(x).tickSize(0).tickFormat(t => t.length > 14 ? t.slice(0,13)+"…" : t)).select(".domain").remove();
+    const pts = g.selectAll("g.pt").data(desc).join("g").attr("transform", r => `translate(${x(r.topic)+xm(r.model)},0)`);
+    pts.append("line").attr("y1", r => yy(r.ci_lo)).attr("y2", r => yy(r.ci_hi)).attr("stroke", r => colour(r.model)).attr("stroke-width", 2).attr("stroke-linecap","round");
+    pts.append("circle").attr("cy", r => yy(r.mean)).attr("r", 4).attr("fill", r => colour(r.model)).attr("stroke","var(--bg)").attr("stroke-width",1.5);
+    pts.append("rect").attr("x",-8).attr("width",16).attr("y",M.t).attr("height",M.b-M.t).attr("fill","transparent")
+      .on("mousemove",(ev,r)=>showTip(ev,`<b>${r.model}</b> · ${r.topic}<br>mean ${fmt(r.mean)} [${fmt(r.ci_lo)}, ${fmt(r.ci_hi)}]<br>sd ${r.sd.toFixed(3)} · n ${r.n}`)).on("mouseleave",hideTip);
+    const lg = g.append("g").attr("transform",`translate(${d.cx+BW/2-16-present.length*70},${d.top+42})`);
+    present.forEach((m,i)=>{ lg.append("circle").attr("cx",i*70).attr("cy",-4).attr("r",4).attr("fill",colour(m)); lg.append("text").attr("class","lbl").attr("x",i*70+8).attr("y",0).text(m); });
+    g.append("text").attr("class","lbl").attr("x", M.l).attr("y", d.top+40).text("mean VADER compound, 95% CI"); }
+  // 5 decision diamond
+  { const d = decision; const g = node(svg, d, g => g.append("polygon").attr("class","box").attr("points",`${d.cx},${d.top} ${d.cx+DW/2},${dcy} ${d.cx},${d.bottom} ${d.cx-DW/2},${dcy}`));
+    g.selectAll("text").remove();
+    g.append("text").attr("class","num").attr("x", d.cx-56).attr("y", dcy-4).text("5");
+    g.append("text").attr("class","title").attr("x", d.cx-38).attr("y", dcy-4).text(d.title);
+    g.append("text").attr("class","lbl").attr("x", d.cx).attr("y", dcy+16).attr("text-anchor","middle").text(d.sub); }
+  // done
+  { const g = svg.append("g").datum(done).attr("class","node done").style("cursor","pointer").on("click",(ev,d)=>select(d));
+    g.append("rect").attr("class","box").attr("x", decision.cx-110).attr("y", FY).attr("width", 220).attr("height", 44).attr("rx", 22);
+    g.append("text").attr("class","title").attr("x", decision.cx).attr("y", FY+28).attr("text-anchor","middle").text(done.title); }
+  // edges
+  const seq = [...steps, decision];
+  svg.selectAll("path.seq").data(d3.pairs(seq)).join("path").attr("class","edge").attr("d",([a,b])=>`M${a.cx},${a.bottom} L${b.cx},${b.top}`).attr("marker-end","url(#arrow)");
+  svg.append("path").attr("class","edge yes").attr("d",`M${decision.cx},${decision.bottom} L${decision.cx},${FY}`).attr("marker-end","url(#arrow)");
+  svg.append("text").attr("class","elabel yes").attr("x",decision.cx+8).attr("y",decision.bottom+GAP/2+4).text("satisfied");
+  const lx = X + BW + 60;
+  svg.append("path").attr("class","edge loop").attr("d",`M${decision.cx+DW/2},${dcy} H${lx} V${steps[0].top+steps[0].h/2} H${X+BW}`).attr("marker-end","url(#arrow)");
+  const ly = (dcy + steps[0].top)/2;
+  ["not satisfied:","change n, prompt,","charts or models"].forEach((t,i)=>svg.append("text").attr("class","elabel loop").attr("x",lx+8).attr("y",ly+(i-1)*16).text(t));
+
+  // ── detail renderers ─────────────────────────────────────────────────────
+  function drawPairTable(){
+    const t = d3.select("#pairTable").append("table");
+    t.append("thead").html("<tr><th>Chart</th><th>Pair</th><th>Δ mean</th><th>95% CI</th><th>δ</th><th>p adj.</th></tr>");
+    t.append("tbody").selectAll("tr").data(pairRows).join("tr").html(r => `<td>${r.topic}</td><td>${r.pair.replace(" vs ","–")}</td><td>${fmt(r.mean_diff)}</td><td>[${fmt(r.boot_ci95[0])}, ${fmt(r.boot_ci95[1])}]</td><td>${fmt(r.cliffs_delta)}</td><td class="${r.significant_at_alpha_over_3?"sig":""}">${fp(r.p_bonf)}</td>`);
+  }
+  function drawStrip(){
+    const sel = d3.select("#topicSel"); sel.selectAll("option").data(topics).join("option").text(t=>t);
+    const s = d3.select("#strip"), W = 340, H = 200, M = {t:10, r:10, b:30, l:62};
+    const x = d3.scaleLinear([-1,1],[M.l,W-M.r]), y = d3.scaleBand(present,[M.t,H-M.b]).padding(0.3);
+    s.append("g").attr("class","grid").selectAll("line").data(x.ticks(4)).join("line").attr("y1",M.t).attr("y2",H-M.b).attr("x1",x).attr("x2",x);
+    s.append("g").attr("class","axis").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(4).tickFormat(d3.format("+.1f")).tickSize(0)).select(".domain").remove();
+    s.append("g").attr("class","axis").attr("transform",`translate(${M.l-6},0)`).call(d3.axisLeft(y).tickSize(0)).select(".domain").remove();
+    const layer = s.append("g"), ml = s.append("g"); const jit = d3.randomUniform.source(d3.randomLcg(42))(-1,1);
+    function draw(topic){
+      d3.select("#topicImg").attr("src", meta.images?.[topic] ?? "").attr("alt", topic);
+      const rows = scores.filter(d=>d.topic===topic).map(d=>({...d,j:jit()}));
+      layer.selectAll("circle").data(rows,d=>d.model+d.run).join("circle").attr("cx",d=>x(d.score)).attr("cy",d=>y(d.model)+y.bandwidth()/2+d.j*y.bandwidth()*0.38)
+        .attr("r",3).attr("fill",d=>colour(d.model)).attr("fill-opacity",.5)
+        .on("mousemove",(ev,d)=>showTip(ev,`<b>${d.model}</b> run ${d.run}<br>score ${fmt(d.score)} · ${d.n_chars} chars`)).on("mouseleave",hideTip);
+      const means = present.map(m=>({m,v:d3.mean(rows.filter(d=>d.model===m),d=>d.score)})).filter(d=>d.v!=null);
+      ml.selectAll("line").data(means,d=>d.m).join("line").attr("x1",d=>x(d.v)).attr("x2",d=>x(d.v)).attr("y1",d=>y(d.m)).attr("y2",d=>y(d.m)+y.bandwidth()).attr("stroke","currentColor").attr("stroke-width",2);
+    }
+    sel.on("change",()=>draw(sel.property("value"))); draw(topics[0]);
+  }
+  const all = [...steps, decision, done], h = location.hash.slice(1);
+  select(all.find(s => s.id === h) ?? steps[3]);
+  window.addEventListener("hashchange", () => { const t = all.find(s => s.id === location.hash.slice(1)); if (t) select(t); });
+}).catch(e => d3.select("#meta").text("Could not load data: " + e));
+</script>
+</body>
+</html>

@@ -41,3 +41,8 @@ next-env.d.ts
 # Analysis working directory (local only)
 analysis/results/
 analysis/venv/
+
+# Powered experiment: keep data and plan, drop run logs / process files
+analysis_power/results/*.log
+analysis_power/results/.pids
+analysis_power/results/refresh_loop.sh
