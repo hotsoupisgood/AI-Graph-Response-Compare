@@ -219,11 +219,16 @@ Promise.all([
   }
   function drawStrip(){
     const sel = d3.select("#topicSel"); sel.selectAll("option").data(topics).join("option").text(t=>t);
-    const s = d3.select("#strip"), W = 340, H = 200, M = {t:10, r:10, b:30, l:62};
+    const s = d3.select("#strip"), W = 340, H = 216, M = {t:26, r:10, b:30, l:62};
+    s.attr("height", H);
     const x = d3.scaleLinear([-1,1],[M.l,W-M.r]), y = d3.scaleBand(present,[M.t,H-M.b]).padding(0.3);
     s.append("g").attr("class","grid").selectAll("line").data(x.ticks(4)).join("line").attr("y1",M.t).attr("y2",H-M.b).attr("x1",x).attr("x2",x);
     s.append("g").attr("class","axis").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(4).tickFormat(d3.format("+.1f")).tickSize(0)).select(".domain").remove();
     s.append("g").attr("class","axis").attr("transform",`translate(${M.l-6},0)`).call(d3.axisLeft(y).tickSize(0)).select(".domain").remove();
+    { const lg = addLegend(s, present, W-54, 14);                       // model dots + "mean" bar marker
+      const k = present.length*68; lg.append("line").attr("x1",k).attr("x2",k).attr("y1",-10).attr("y2",2).attr("stroke","currentColor").attr("stroke-width",2);
+      lg.append("text").attr("class","lbl").attr("x",k+6).attr("y",0).text("mean"); }
+    s.append("text").attr("class","lbl").attr("x", W-M.r).attr("y", H-4).attr("text-anchor","end").text("VADER compound");
     const layer = s.append("g"), ml = s.append("g"); const jit = d3.randomUniform.source(d3.randomLcg(42))(-1,1);
     function draw(topic){
       d3.select("#topicImg").attr("src", meta.images?.[topic] ?? "").attr("alt", topic);
@@ -238,12 +243,13 @@ Promise.all([
       ml.selectAll("line").data(means,d=>d.m).join("line").attr("x1",d=>x(d.v)).attr("x2",d=>x(d.v)).attr("y1",d=>y(d.m)).attr("y2",d=>y(d.m)+y.bandwidth()).attr("stroke","currentColor").attr("stroke-width",2);
     }
     // ── density plot under the strip ───────────────────────────────────────
-    const ds = d3.select("#dens"), DH = 150, DM = {t:8, r:10, b:26, l:62};
+    const ds = d3.select("#dens"), DWd = 340, DH = 150, DM = {t:8, r:10, b:26, l:62};
     const dy = d3.scaleLinear().range([DH-DM.b, DM.t]);
     ds.append("g").attr("class","grid").selectAll("line").data(x.ticks(4)).join("line").attr("y1",DM.t).attr("y2",DH-DM.b).attr("x1",x).attr("x2",x);
     ds.append("g").attr("class","axis").attr("transform",`translate(0,${DH-DM.b})`).call(d3.axisBottom(x).ticks(4).tickFormat(d3.format("+.1f")).tickSize(0)).select(".domain").remove();
     ds.append("text").attr("class","lbl").attr("x", DM.l).attr("y", DM.t+9).text("density");
     addLegend(ds, present, 340, DM.t+9);
+    ds.append("text").attr("class","lbl").attr("x", DWd-DM.r).attr("y", DH-2).attr("text-anchor","end").text("VADER compound");
     const dlayer = ds.append("g");
     const kernel = u => Math.abs(u) <= 1 ? 0.75*(1-u*u) : 0;                    // Epanechnikov
     const kde = (vals, bw, xs) => xs.map(xx => [xx, d3.mean(vals, v => kernel((xx-v)/bw))/bw]);
@@ -258,7 +264,7 @@ Promise.all([
         .on("mousemove",(ev,c)=>showTip(ev,`<b>${c.m}</b> · n ${c.n}`)).on("mouseleave",hideTip);
     }
     // ── sentiment drivers: words with largest total VADER contribution per response ──
-    const ds2 = d3.select("#drivers"), DW = 340, DM2 = {t:34, r:12, b:22, l:12}, TOPK = 8;
+    const ds2 = d3.select("#drivers"), DW = 340, DM2 = {t:34, r:12, b:34, l:12}, TOPK = 8;
     const dl = ds2.append("g"), dax = ds2.append("g").attr("class","axis");
     ds2.append("text").attr("class","lbl").attr("x", DW/2).attr("y", 10).attr("text-anchor","middle").text("← pulls score down · pushes score up →");
     addLegend(ds2, present, DW, 26).attr("transform", `translate(${DW/2 - present.length*34},26)`);
@@ -286,6 +292,7 @@ Promise.all([
       dl.selectAll("text.w").data(words, d=>d).join("text").attr("class","w lbl").style("font-size","11.5px")
         .attr("x", d => pos.includes(d) ? xw(0)-5 : xw(0)+5).attr("text-anchor", d => pos.includes(d) ? "end" : "start").attr("y", d=>y0(d)+y0.bandwidth()/2+4).text(d=>d);
       dax.attr("transform",`translate(0,${H2-DM2.b})`).call(d3.axisBottom(xw).ticks(5).tickSize(0).tickFormat(d3.format("+.1f"))).select(".domain").remove();
+      dl.selectAll("text.xl").data([0]).join("text").attr("class","xl lbl").attr("x", DW/2).attr("y", H2-4).attr("text-anchor","middle").text("VADER valence per response");
     }
     const drawStripOnly = draw;
     function drawAll(topic){ drawStripOnly(topic); drawDensity(scores.filter(d=>d.topic===topic)); loadResponses().then(()=>drawDrivers(topic)); }
